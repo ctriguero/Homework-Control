@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script src="https://unpkg.com/xlsx-js-style/dist/xlsx.bundle.js"></script>
+
+<style>
+table {
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #333;
+    width: 60px;
+    height: 40px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.name {
+    width: 120px;
+    font-weight: bold;
+}
+
+.rotate {
+    height: 120px;
+}
+
+.rotate div {
+    transform: rotate(-90deg);
+    white-space: nowrap;
+}
+
+.checked {
+    background: #92D050;
+    color: white;
+    font-size: 20px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Homework Tracker (Excel Export)</h2>
+
+<table id="hwTable">
+
+<tr>
+    <th class="name">Student</th>
+    <th class="rotate"><div>HW1</div></th>
+    <th class="rotate"><div>HW2</div></th>
+    <th class="rotate"><div>HW3</div></th>
+</tr>
+
+<tr>
+    <td class="name">John</td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+</tr>
+
+<tr>
+    <td class="name">Mary</td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+</tr>
+
+</table>
+
+<br>
+
+<button onclick="exportExcel()">📊 Export to Excel</button>
+
+<script>
+
+// toggle tick
+function toggle(cell){
+    if(cell.classList.contains("checked")){
+        cell.classList.remove("checked");
+        cell.innerHTML = "";
+    } else {
+        cell.classList.add("checked");
+        cell.innerHTML = "✔";
+    }
+}
+
+// date filename
+function getDate(){
+    let d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// EXPORT TO EXCEL
+function exportExcel(){
+
+    const table = document.getElementById("hwTable");
+    const ws = XLSX.utils.table_to_sheet(table);
+
+    // apply styling (colors + headers)
+    for(let r=0;r<table.rows.length;r++){
+        for(let c=0;c<table.rows[r].cells.length;c++){
+
+            const cellEl = table.rows[r].cells[c];
+            const addr = XLSX.utils.encode_cell({r,c});
+            const cell = ws[addr];
+
+            if(!cell) continue;
+
+            // header style
+            if(r === 0){
+                cell.s = {
+                    fill: { fgColor: { rgb: "4472C4" } },
+                    font: { color: { rgb: "FFFFFF" }, bold: true },
+                    alignment: { horizontal: "center" }
+                };
+            }
+
+            // checked cells
+            if(cellEl.classList.contains("checked")){
+                cell.s = {
+                    fill: { fgColor: { rgb: "92D050" } },
+                    font: { bold: true }
+                };
+            }
+        }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Homework");
+
+    XLSX.writeFile(wb, `homework-${getDate()}.xlsx`);
+}
+
+</script>
+
+</body>
+</html>

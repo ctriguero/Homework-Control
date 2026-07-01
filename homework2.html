@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<style>
+table {
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #333;
+    width: 60px;
+    height: 40px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.name {
+    width: 120px;
+    font-weight: bold;
+}
+
+.rotate {
+    height: 120px;
+}
+
+.rotate div {
+    transform: rotate(-90deg);
+    white-space: nowrap;
+}
+
+.checked {
+    background: #92D050;
+    color: white;
+    font-size: 20px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Homework Tracker (Saved Automatically)</h2>
+
+<table id="hwTable">
+
+<tr>
+    <th class="name">Student</th>
+    <th class="rotate"><div>HW1</div></th>
+    <th class="rotate"><div>HW2</div></th>
+    <th class="rotate"><div>HW3</div></th>
+</tr>
+
+<tr>
+    <td class="name">John</td>
+    <td onclick="toggle(this,0,0)"></td>
+    <td onclick="toggle(this,0,1)"></td>
+    <td onclick="toggle(this,0,2)"></td>
+</tr>
+
+<tr>
+    <td class="name">Mary</td>
+    <td onclick="toggle(this,1,0)"></td>
+    <td onclick="toggle(this,1,1)"></td>
+    <td onclick="toggle(this,1,2)"></td>
+</tr>
+
+</table>
+
+<script>
+
+// Load saved data when page opens
+window.onload = function(){
+    let data = JSON.parse(localStorage.getItem("homework")) || {};
+    
+    document.querySelectorAll("td").forEach(td => {
+        let key = td.getAttribute("data-key");
+        if(data[key]){
+            td.classList.add("checked");
+            td.innerHTML = "✔";
+        }
+    });
+}
+
+function toggle(cell,row,col){
+
+    let key = row + "-" + col;
+
+    let data = JSON.parse(localStorage.getItem("homework")) || {};
+
+    if(cell.classList.contains("checked")){
+        cell.classList.remove("checked");
+        cell.innerHTML = "";
+        delete data[key];
+    } else {
+        cell.classList.add("checked");
+        cell.innerHTML = "✔";
+        data[key] = true;
+    }
+
+    localStorage.setItem("homework", JSON.stringify(data));
+}
+
+</script>
+
+</body>
+</html>

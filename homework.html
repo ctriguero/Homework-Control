@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<style>
+table {
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+th, td {
+    border: 1px solid #333;
+    width: 60px;
+    height: 40px;
+    text-align: center;
+    cursor: pointer;
+}
+
+/* Student column */
+.name {
+    width: 120px;
+    font-weight: bold;
+}
+
+/* Rotated headers */
+.rotate {
+    height: 120px;
+    vertical-align: bottom;
+    padding: 0;
+}
+
+.rotate div {
+    transform: rotate(-90deg);
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+/* tick style */
+.checked {
+    background: #92D050;
+    color: white;
+    font-size: 20px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Homework Tracker</h2>
+
+<table id="hwTable">
+
+<tr>
+    <th class="name">Student</th>
+    <th class="rotate"><div>HW1</div></th>
+    <th class="rotate"><div>HW2</div></th>
+    <th class="rotate"><div>HW3</div></th>
+    <th class="rotate"><div>HW4</div></th>
+</tr>
+
+<tr>
+    <td class="name">John</td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+</tr>
+
+<tr>
+    <td class="name">Mary</td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+</tr>
+
+<tr>
+    <td class="name">Peter</td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+    <td onclick="toggle(this)"></td>
+</tr>
+
+</table>
+
+<script>
+function toggle(cell){
+    if(cell.classList.contains("checked")){
+        cell.classList.remove("checked");
+        cell.innerHTML = "";
+    } else {
+        cell.classList.add("checked");
+        cell.innerHTML = "✔";
+    }
+}
+</script>
+
+</body>
+</html>

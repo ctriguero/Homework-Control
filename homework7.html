@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script src="https://unpkg.com/xlsx-js-style/dist/xlsx.bundle.js"></script>
+
+<style>
+table {
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #333;
+    width: 70px;
+    height: 40px;
+    text-align: center;
+    cursor: pointer;
+}
+
+/* STUDENT COLUMN (NOT ROTATED) */
+.name {
+    width: 120px;
+    font-weight: bold;
+    background: #FCFFD9;
+}
+
+/* ========================= */
+/* PERFECT CENTERED ROTATION */
+/* ========================= */
+.rotate {
+    height: 200px;
+    width: 70px;
+    vertical-align: middle;
+    text-align: center;
+    position: relative;
+}
+
+.rotate div {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    transform-origin: center;
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+/* COLORS */
+.done {
+    background: #92D050;
+    color: white;
+}
+
+.notdone {
+    background: #FF4D4D;
+    color: white;
+}
+
+button {
+    padding: 10px 15px;
+    margin: 8px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Homework Tracker</h2>
+
+<!-- BUTTONS -->
+<button onclick="saveHTML()">💾 Save HTML</button>
+<button onclick="exportExcel()">📊 Export Excel</button>
+
+<table id="hwTable">
+
+<tr>
+    <th class="name">Student</th>
+    <th class="rotate"><div>Distance time graphs</div></th>
+    <th class="rotate"><div>Velocity time graphs</div></th>
+    <th class="rotate"><div>Speed equation</div></th>
+    <th class="rotate"><div>Displacement time graphs</div></th>
+
+</tr>
+
+<tr>
+    <td class="name">John</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Mary</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Pepe</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Ana</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Normanda</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Joselito</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Rosa</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">John</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Mary</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Pepe</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Ana</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Normanda</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Joselito</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Rosa</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+<td onclick="toggle(this)">1</td>
+</tr>
+
+
+</table>
+
+<script>
+
+/////////////////////////////
+// SAVE STATE (BOTH REQUIRED)
+/////////////////////////////
+let htmlSaved = false;
+let excelSaved = false;
+
+function markDirty(){
+    htmlSaved = false;
+    excelSaved = false;
+}
+
+/////////////////////////////
+// TOGGLE CELL
+/////////////////////////////
+function toggle(cell){
+
+    if(cell.innerHTML === "1"){
+        cell.innerHTML = "0";
+        cell.classList.add("done");
+        cell.classList.remove("notdone");
+    } else {
+        cell.innerHTML = "1";
+        cell.classList.add("notdone");
+        cell.classList.remove("done");
+    }
+
+    markDirty();
+}
+
+/////////////////////////////
+// DATE
+/////////////////////////////
+function getDate(){
+    let d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/////////////////////////////
+// SAVE HTML
+/////////////////////////////
+function saveHTML(){
+
+    const html = document.documentElement.outerHTML;
+
+    const blob = new Blob([html], {type:"text/html"});
+    const a = document.createElement("a");
+
+    a.href = URL.createObjectURL(blob);
+    a.download = `homework-${getDate()}.html`;
+    a.click();
+
+    htmlSaved = true;
+}
+
+/////////////////////////////
+// EXPORT EXCEL
+/////////////////////////////
+function exportExcel(){
+
+    const table = document.getElementById("hwTable");
+
+    const ws = XLSX.utils.table_to_sheet(table);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Homework");
+
+    XLSX.writeFile(wb, `homework-${getDate()}.xlsx`);
+
+    excelSaved = true;
+}
+
+/////////////////////////////
+// WARNING (ONLY IF BOTH NOT SAVED)
+/////////////////////////////
+window.addEventListener("beforeunload", function (e) {
+
+    if(!(htmlSaved && excelSaved)){
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+    }
+
+});
+
+</script>
+
+</body>
+</html>

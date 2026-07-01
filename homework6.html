@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script src="https://unpkg.com/xlsx-js-style/dist/xlsx.bundle.js"></script>
+
+<style>
+table {
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #333;
+    width: 70px;
+    height: 40px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.name {
+    width: 120px;
+    font-weight: bold;
+}
+
+.rotate {
+    height: 120px;
+}
+
+.rotate div {
+    transform: rotate(-90deg);
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+.done {
+    background: #92D050;
+    color: white;
+}
+
+.notdone {
+    background: #FF4D4D;
+    color: white;
+}
+
+button {
+    padding: 10px 15px;
+    margin: 8px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Homework Tracker</h2>
+
+<button onclick="saveHTML()">💾 Save HTML</button>
+<button onclick="exportExcel()">📊 Export Excel</button>
+
+<table id="hwTable">
+
+<tr>
+    <th class="name">Student</th>
+    <th class="rotate"><div>HW1</div></th>
+    <th class="rotate"><div>HW2</div></th>
+    <th class="rotate"><div>HW3</div></th>
+</tr>
+
+<tr>
+    <td class="name">John</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+</tr>
+
+<tr>
+    <td class="name">Mary</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+    <td onclick="toggle(this)">1</td>
+</tr>
+
+</table>
+
+<script>
+
+// toggle 1 / 0
+function toggle(cell){
+    if(cell.innerHTML === "1"){
+        cell.innerHTML = "0";
+        cell.classList.add("done");
+        cell.classList.remove("notdone");
+    } else {
+        cell.innerHTML = "1";
+        cell.classList.add("notdone");
+        cell.classList.remove("done");
+    }
+}
+
+// date
+function getDate(){
+    let d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+//////////////////////////
+// SAVE HTML
+//////////////////////////
+function saveHTML(){
+    const html = document.documentElement.outerHTML;
+    const blob = new Blob([html], {type:"text/html"});
+    const a = document.createElement("a");
+
+    a.href = URL.createObjectURL(blob);
+    a.download = `homework-${getDate()}.html`;
+    a.click();
+}
+
+//////////////////////////
+// EXCEL WITH ROTATED HEADERS
+//////////////////////////
+function exportExcel(){
+
+    const table = document.getElementById("hwTable");
+
+    const ws = XLSX.utils.table_to_sheet(table);
+
+    // LOOP ALL CELLS
+    for(let r = 0; r < table.rows.length; r++){
+        for(let c = 0; c < table.rows[r].cells.length; c++){
+
+            const addr = XLSX.utils.encode_cell({r,c});
+            const cell = ws[addr];
+
+            if(!cell) continue;
+
+            // ROTATE HEADER ROW (row 0)
+            if(r === 0){
+
+                cell.s = {
+                    alignment: {
+                        textRotation: 90,
+                        horizontal: "center",
+                        vertical: "center"
+                    },
+                    font: {
+                        bold: true
+                    }
+                };
+            }
+
+            // ensure data stays clean (0/1)
+            if(r > 0){
+                cell.t = "n"; // number type (optional cleanliness)
+            }
+        }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Homework");
+
+    XLSX.writeFile(wb, `homework-${getDate()}.xlsx`);
+}
+
+</script>
+
+</body>
+</html>
