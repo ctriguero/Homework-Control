@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Homework Tracker</title>
+<script src="https://unpkg.com/xlsx-js-style/dist/xlsx.bundle.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- This script tag holds the tracker's data so the file is portable: saving a backup
+     embeds the current roster + progress right here, so it can be reopened on any
+     computer and continue where it left off. Do not edit by hand. -->
+<script id="stateData" type="application/json">{}</script>
+
+<style>
+  :root{
+    --bg: #F4F5EF;
+    --ink: #223129;
+    --ink-soft: #55645C;
+    --teal: #2B6777;
+    --teal-dark: #1E4C58;
+    --mustard: #E4A335;
+    --done: #3E8E5A;
+    --done-bg: #E7F3EA;
+    --notdone: #D9584B;
+    --notdone-bg: #FBEAE7;
+    --grid-line: rgba(43,103,119,0.10);
+    --card: #FFFFFF;
+    --border: #D9DDD3;
+    font-size: 16px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--ink);
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    min-height: 100vh;
+    padding: 24px 20px 60px;
+  }
+
+  h1{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+  }
+  .subtitle{
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    margin: 0 0 20px;
+  }
+
+  .app{ max-width: 1100px; margin: 0 auto; }
+
+  /* ---------- Buttons ---------- */
+  .toolbar{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  button{
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  button:active{ transform: translateY(1px) scale(0.98); }
+  .btn-primary{ background: var(--teal); color: white; }
+  .btn-primary:hover{ background: var(--teal-dark); }
+  .btn-secondary{ background: var(--card); color: var(--teal-dark); border: 1px solid var(--border); }
+  .btn-secondary:hover{ background: #EFF3EE; }
+  .btn-mustard{ background: var(--mustard); color: #3A2A05; }
+  .btn-mustard:hover{ filter: brightness(0.96); }
+  .btn-danger{ background: var(--card); color: var(--notdone); border: 1px solid var(--border); }
+  .btn-danger:hover{ background: var(--notdone-bg); }
+
+  .save-status{
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    align-self: center;
+    margin-left: auto;
+  }
+  .save-status .dot{
+    display:inline-block; width:7px; height:7px; border-radius:50%;
+    background: var(--done); margin-right: 6px;
+  }
+  .save-status .dot.off{ background: #C7CCC3; }
+
+  .assign-summary{
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+    margin: -8px 0 14px;
+  }
+
+  /* ---------- Setup screen ---------- */
+  .setup-card{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    box-shadow: 0 2px 10px rgba(31,42,36,0.06);
+  }
+  .setup-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 18px 0 22px;
+  }
+  @media (max-width: 700px){ .setup-grid{ grid-template-columns: 1fr; } }
+  label.field-label{
+    font-weight: 600;
+    font-size: 0.9rem;
+    display:block;
+    margin-bottom: 6px;
+  }
+  .hint{ color: var(--ink-soft); font-size: 0.82rem; margin: -2px 0 8px; }
+  textarea{
+    width: 100%;
+    min-height: 220px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    resize: vertical;
+  }
+  textarea:focus, button:focus-visible{
+    outline: 2px solid var(--teal);
+    outline-offset: 1px;
+  }
+
+  /* ---------- Table ---------- */
+  .table-wrap{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: auto;
+    max-height: 72vh;
+    box-shadow: 0 2px 10px rgba(31,42,36,0.06);
+  }
+  table{ border-collapse: separate; border-spacing: 0; }
+  th, td{
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  td.cell{
+    width: 64px; height: 52px;
+    min-width: 64px;
+    cursor: pointer;
+    user-select: none;
+  }
+  td.cell .mark{
+    display:inline-flex;
+    align-items:center; justify-content:center;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: transform .12s ease;
+  }
+  td.cell:active .mark{ transform: scale(0.88); }
+  td.cell.done .mark{ background: var(--done-bg); color: var(--done); box-shadow: inset 0 0 0 2px var(--done); }
+  td.cell.notdone .mark{ background: var(--notdone-bg); color: var(--notdone); box-shadow: inset 0 0 0 2px rgba(217,88,75,0.35); }
+
+  td.name, th.name-head{
+    position: sticky; left: 0; z-index: 2;
+    background: #FCFCF8;
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 600;
+    min-width: 150px;
+    white-space: nowrap;
+  }
+  th.name-head{ z-index: 4; background: var(--teal-dark); color: white; }
+
+  thead th{
+    position: sticky; top: 0; z-index: 3;
+    background: var(--teal-dark);
+    color: white;
+    padding: 0;
+  }
+  th.rotate{
+    height: 170px; width: 64px; min-width: 64px;
+    padding: 0;
+  }
+  th.rotate .rotate-inner{
+    height: 100%; width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  th.rotate .label{
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    padding: 6px 4px;
+    border-radius: 6px;
+  }
+  th.rotate .label:hover{ background: rgba(255,255,255,0.12); }
+  th.rotate.unassigned{ background: #33474F; }
+  th.rotate.unassigned .label{ opacity: 0.55; }
+  td.cell.disabled{
+    cursor: default;
+    background: #F0F1EC;
+  }
+  td.cell.disabled .mark{
+    color: #9AA39C;
+    background: transparent;
+    box-shadow: none;
+  }
+  th.progress-head, td.progress-cell{
+    min-width: 100px;
+  }
+
+  .progress-cell{ padding: 8px 10px; }
+  .progress-bar{
+    height: 8px;
+    border-radius: 4px;
+    background: var(--notdone-bg);
+    overflow: hidden;
+  }
+  .progress-fill{ height: 100%; background: var(--done); }
+  .progress-pct{ font-size: 0.75rem; color: var(--ink-soft); margin-top: 4px; }
+
+  tfoot td{
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    background: #FCFCF8;
+    padding: 6px 4px;
+  }
+
+  .hidden{ display:none !important; }
+
+  .footnote{
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    margin-top: 14px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <h1>Homework Tracker</h1>
+  <p class="subtitle">Tap a cell to mark homework as done. Progress saves automatically in this browser.</p>
+
+  <!-- ===================== SETUP SCREEN ===================== -->
+  <div id="setupScreen" class="setup-card hidden">
+    <label class="field-label">Class name (optional)</label>
+    <input id="className" type="text" placeholder="e.g. Physics 3B" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-family:'Inter',sans-serif; font-size:0.92rem; margin-bottom:18px;">
+
+    <div class="setup-grid">
+      <div>
+        <label class="field-label">Students</label>
+        <p class="hint">One name per line. If two students share a name, you'll be asked for a surname to tell them apart.</p>
+        <textarea id="studentsInput" placeholder="John
+Mary
+Pepe
+Ana"></textarea>
+      </div>
+      <div>
+        <label class="field-label">Homework / topics</label>
+        <p class="hint">One item per line. You can add more later as the year goes on.</p>
+        <textarea id="homeworksInput" placeholder="Distance time graphs
+Velocity time graphs
+Speed equation
+Displacement time graphs"></textarea>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="createTracker()">Create tracker</button>
+  </div>
+
+  <!-- ===================== TRACKER SCREEN ===================== -->
+  <div id="trackerScreen" class="hidden">
+    <div class="toolbar">
+      <button class="btn-primary" onclick="exportExcel()">📊 Export Excel</button>
+      <button class="btn-secondary" onclick="saveHTMLBackup()">💾 Save backup file</button>
+      <button id="fileConnectBtn" class="btn-secondary" onclick="connectFile()">🔗 Connect file for autosave</button>
+      <button class="btn-secondary" onclick="addStudent()">+ Student</button>
+      <button class="btn-secondary" onclick="addHomework()">+ Homework</button>
+      <button class="btn-danger" onclick="startNewYear()">Start new year</button>
+      <span class="save-status"><span class="dot" id="saveDot"></span><span id="saveStatusText">Saved</span></span>
+    </div>
+    <p class="assign-summary" id="assignSummary"></p>
+
+    <div class="table-wrap">
+      <table id="hwTable"></table>
+    </div>
+
+    <p class="footnote">
+      Tap a cell to mark homework done. <strong>Click a homework header</strong> to mark it as assigned / not yet assigned (progress % only counts assigned homework). <strong>Double-click</strong> a student name or homework label to rename or delete it.<br>
+      In the exported Excel file, <strong>0 = done</strong> and <strong>1 = not done</strong>, so a simple SUM counts outstanding homework.<br>
+      <span id="fileStatusNote">Progress autosaves in this browser. Use "Connect file for autosave" (Chrome/Edge on a computer) to have it also write straight to a file on your disk, or "Save backup file" to download a dated copy by hand.</span>
+    </p>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'hwTracker_v1';
+let state = null; // { className, students:[...], homeworks:[...], data:{ "student||homework": 0|1 }, assigned:{ homework: true|false } }
+let fileHandle = null;
+let pendingHandle = null;
+
+/////////////////////////////
+// INIT
+/////////////////////////////
+async function init(){
+  let embedded = {};
+  try{ embedded = JSON.parse(document.getElementById('stateData').textContent || '{}'); }catch(e){ embedded = {}; }
+
+  let stored = null;
+  try{ stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }catch(e){ stored = null; }
+
+  if(embedded && embedded.students && embedded.students.length){
+    state = embedded;
+    saveToLocalStorage();
+  } else if(stored && stored.students && stored.students.length){
+    state = stored;
+  } else {
+    showSetup();
+    return;
+  }
+  showTracker();
+  render();
+  initFileHandle();
+}
+
+function showSetup(){
+  document.getElementById('setupScreen').classList.remove('hidden');
+  document.getElementById('trackerScreen').classList.add('hidden');
+}
+function showTracker(){
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('trackerScreen').classList.remove('hidden');
+}
+
+/////////////////////////////
+// CREATE TRACKER FROM SETUP
+/////////////////////////////
+function createTracker(){
+  const studentsRaw = document.getElementById('studentsInput').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const homeworksRaw = document.getElementById('homeworksInput').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const className = document.getElementById('className').value.trim();
+
+  if(studentsRaw.length === 0 || homeworksRaw.length === 0){
+    alert('Please add at least one student and one homework item.');
+    return;
+  }
+
+  // de-duplicate names, keep order (students get a surname prompt, homeworks just get numbered)
+  const students = dedupeStudents(studentsRaw);
+  const homeworks = dedupe(homeworksRaw);
+
+  const assigned = {};
+  homeworks.forEach(hw=>{ assigned[hw] = true; }); // homework set up at the start of the year counts right away
+
+  state = { className, students, homeworks, data: {}, assigned };
+  saveToLocalStorage();
+  showTracker();
+  render();
+  initFileHandle();
+}
+
+function dedupe(list){
+  const seen = {};
+  return list.map(name=>{
+    if(!(name in seen)){ seen[name] = 1; return name; }
+    seen[name]++;
+    return `${name} (${seen[name]})`;
+  });
+}
+
+function dedupeStudents(list){
+  const counts = {};
+  list.forEach(n=>{ counts[n] = (counts[n]||0) + 1; });
+
+  const surnames = {}; // name -> [surname for occurrence 1, occurrence 2, ...]
+  Object.keys(counts).forEach(name=>{
+    if(counts[name] < 2) return;
+    surnames[name] = [];
+    for(let i = 1; i <= counts[name]; i++){
+      const s = prompt(`There are ${counts[name]} students named "${name}". Enter a surname for ${name} #${i} (leave blank to just number them):`, '');
+      surnames[name].push(s ? s.trim() : '');
+    }
+  });
+
+  const seenIdx = {};
+  return list.map(name=>{
+    if(!(name in surnames)) return name;
+    const idx = seenIdx[name] || 0;
+    seenIdx[name] = idx + 1;
+    const s = surnames[name][idx];
+    return s ? `${name} ${s}` : `${name} (${idx+1})`;
+  });
+}
+
+/////////////////////////////
+// DATA HELPERS
+/////////////////////////////
+function key(student, hw){ return student + '||' + hw; }
+function getValue(student, hw){
+  const v = state.data[key(student,hw)];
+  return (v === 0) ? 0 : 1; // default: not done
+}
+function setValue(student, hw, val){
+  state.data[key(student,hw)] = val;
+}
+function isAssigned(hw){
+  // missing/undefined = treated as assigned (keeps older saved files working as before)
+  return !(state.assigned && state.assigned[hw] === false);
+}
+function toggleHomeworkAssigned(hw){
+  if(!state.assigned) state.assigned = {};
+  state.assigned[hw] = !isAssigned(hw);
+  persist();
+  render();
+}
+
+/////////////////////////////
+// RENDER TABLE
+/////////////////////////////
+function render(){
+  const table = document.getElementById('hwTable');
+  table.innerHTML = '';
+
+  // header row
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  const nameHead = document.createElement('th');
+  nameHead.className = 'name-head';
+  nameHead.textContent = state.className ? state.className : 'Student';
+  headRow.appendChild(nameHead);
+
+  state.homeworks.forEach(hw=>{
+    const assigned = isAssigned(hw);
+    const th = document.createElement('th');
+    th.className = 'rotate' + (assigned ? '' : ' unassigned');
+    th.title = assigned
+      ? 'Click to pause (not yet assigned). Double-click to rename or delete.'
+      : 'Not yet assigned - click to start collecting data. Double-click to rename or delete.';
+    const div = document.createElement('div');
+    div.className = 'label';
+    div.textContent = hw + (assigned ? '' : ' •');
+
+    let clickTimer = null;
+    div.onclick = ()=>{
+      if(clickTimer) return;
+      clickTimer = setTimeout(()=>{ clickTimer = null; toggleHomeworkAssigned(hw); }, 260);
+    };
+    div.ondblclick = ()=>{
+      if(clickTimer){ clearTimeout(clickTimer); clickTimer = null; }
+      renameHomework(hw);
+    };
+
+    const inner = document.createElement('div');
+    inner.className = 'rotate-inner';
+    inner.appendChild(div);
+    th.appendChild(inner);
+    headRow.appendChild(th);
+  });
+
+  const progHead = document.createElement('th');
+  progHead.className = 'progress-head';
+  progHead.style.color = 'white';
+  progHead.style.fontSize = '0.8rem';
+  progHead.textContent = 'Progress';
+  headRow.appendChild(progHead);
+
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  // body rows
+  const tbody = document.createElement('tbody');
+  state.students.forEach(student=>{
+    const tr = document.createElement('tr');
+
+    const nameTd = document.createElement('td');
+    nameTd.className = 'name';
+    nameTd.textContent = student;
+    nameTd.ondblclick = ()=>renameStudent(student);
+    tr.appendChild(nameTd);
+
+    let doneCount = 0;
+    let assignedCount = 0;
+    state.homeworks.forEach(hw=>{
+      const assigned = isAssigned(hw);
+      const val = getValue(student, hw);
+      const td = document.createElement('td');
+
+      if(!assigned){
+        td.className = 'cell disabled';
+        const mark = document.createElement('span');
+        mark.className = 'mark';
+        mark.textContent = '–';
+        td.appendChild(mark);
+        tr.appendChild(td);
+        return;
+      }
+
+      assignedCount++;
+      if(val === 0) doneCount++;
+      td.className = 'cell ' + (val === 0 ? 'done' : 'notdone');
+      const mark = document.createElement('span');
+      mark.className = 'mark';
+      mark.textContent = val === 0 ? '✓' : '✗';
+      td.appendChild(mark);
+      td.onclick = ()=>toggleCell(student, hw, td, mark);
+      tr.appendChild(td);
+    });
+
+    const progTd = document.createElement('td');
+    progTd.className = 'progress-cell';
+    if(assignedCount === 0){
+      progTd.innerHTML = `<div class="progress-pct">No homework assigned yet</div>`;
+    } else {
+      const pct = Math.round((doneCount / assignedCount) * 100);
+      progTd.innerHTML = `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-pct">${doneCount}/${assignedCount} · ${pct}%</div>`;
+    }
+    tr.appendChild(progTd);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  const assignedTotal = state.homeworks.filter(isAssigned).length;
+  const summaryEl = document.getElementById('assignSummary');
+  if(summaryEl){
+    summaryEl.textContent = `${assignedTotal} of ${state.homeworks.length} homework item${state.homeworks.length===1?'':'s'} assigned so far. Progress % is calculated against assigned homework only.`;
+  }
+}
+
+/////////////////////////////
+// TOGGLE CELL
+/////////////////////////////
+function toggleCell(student, hw, td, mark){
+  const current = getValue(student, hw);
+  const next = current === 0 ? 1 : 0;
+  setValue(student, hw, next);
+
+  td.className = 'cell ' + (next === 0 ? 'done' : 'notdone');
+  mark.textContent = next === 0 ? '✓' : '✗';
+
+  persist();
+  render(); // refresh progress bars / counts
+}
+
+/////////////////////////////
+// ADD / RENAME / DELETE
+/////////////////////////////
+function addStudent(){
+  const name = prompt('New student name:');
+  if(!name) return;
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  if(state.students.includes(trimmed)){
+    alert('That name already exists.');
+    return;
+  }
+  state.students.push(trimmed);
+  persist();
+  render();
+}
+
+function addHomework(){
+  const name = prompt('New homework / topic name:');
+  if(!name) return;
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  if(state.homeworks.includes(trimmed)){
+    alert('That homework item already exists.');
+    return;
+  }
+  state.homeworks.push(trimmed);
+  if(!state.assigned) state.assigned = {};
+  state.assigned[trimmed] = false; // prepped ahead of time; click its header when you actually assign it
+  persist();
+  render();
+}
+
+function renameStudent(oldName){
+  const input = prompt(`Rename "${oldName}" (or type DELETE to remove this student):`, oldName);
+  if(input === null) return;
+  const trimmed = input.trim();
+  if(!trimmed) return;
+
+  if(trimmed.toUpperCase() === 'DELETE'){
+    if(!confirm(`Remove ${oldName} and all their recorded homework? This can't be undone.`)) return;
+    state.students = state.students.filter(s=>s!==oldName);
+    state.homeworks.forEach(hw=>{ delete state.data[key(oldName,hw)]; });
+    persist();
+    render();
+    return;
+  }
+
+  if(trimmed === oldName) return;
+  if(state.students.includes(trimmed)){
+    alert('That name already exists.');
+    return;
+  }
+  state.homeworks.forEach(hw=>{
+    const oldKey = key(oldName, hw);
+    if(oldKey in state.data){
+      state.data[key(trimmed, hw)] = state.data[oldKey];
+      delete state.data[oldKey];
+    }
+  });
+  state.students = state.students.map(s=> s===oldName ? trimmed : s);
+  persist();
+  render();
+}
+
+function renameHomework(oldName){
+  const input = prompt(`Rename "${oldName}" (or type DELETE to remove this homework item):`, oldName);
+  if(input === null) return;
+  const trimmed = input.trim();
+  if(!trimmed) return;
+
+  if(trimmed.toUpperCase() === 'DELETE'){
+    if(!confirm(`Remove "${oldName}" for all students? This can't be undone.`)) return;
+    state.homeworks = state.homeworks.filter(h=>h!==oldName);
+    state.students.forEach(s=>{ delete state.data[key(s,oldName)]; });
+    if(state.assigned) delete state.assigned[oldName];
+    persist();
+    render();
+    return;
+  }
+
+  if(trimmed === oldName) return;
+  if(state.homeworks.includes(trimmed)){
+    alert('That homework item already exists.');
+    return;
+  }
+  state.students.forEach(s=>{
+    const oldKey = key(s, oldName);
+    if(oldKey in state.data){
+      state.data[key(s, trimmed)] = state.data[oldKey];
+      delete state.data[oldKey];
+    }
+  });
+  if(state.assigned && oldName in state.assigned){
+    state.assigned[trimmed] = state.assigned[oldName];
+    delete state.assigned[oldName];
+  }
+  state.homeworks = state.homeworks.map(h=> h===oldName ? trimmed : h);
+  persist();
+  render();
+}
+
+/////////////////////////////
+// START NEW YEAR
+/////////////////////////////
+function startNewYear(){
+  if(!confirm('This clears the current roster and progress from this browser. Make sure you have exported/backed up first. Continue?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = null;
+  document.getElementById('studentsInput').value = '';
+  document.getElementById('homeworksInput').value = '';
+  document.getElementById('className').value = '';
+  showSetup();
+}
+
+/////////////////////////////
+// AUTOSAVE (localStorage + optional connected file)
+/////////////////////////////
+function persist(){
+  saveToLocalStorage();
+  if(fileHandle){ writeToFile(); }
+}
+
+function saveToLocalStorage(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    setSaveStatus(true, 'Saved ' + new Date().toLocaleTimeString() + (fileHandle ? ' (browser + file)' : ' (browser only)'));
+  }catch(e){
+    setSaveStatus(false, 'Autosave failed - export a backup!');
+  }
+}
+
+function setSaveStatus(ok, text){
+  const statusEl = document.getElementById('saveStatusText');
+  const dotEl = document.getElementById('saveDot');
+  if(statusEl) statusEl.textContent = text;
+  if(dotEl) dotEl.classList.toggle('off', !ok);
+}
+
+/////////////////////////////
+// REAL FILE AUTOSAVE (File System Access API - Chrome/Edge desktop)
+/////////////////////////////
+function openKvDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open('hwTrackerFileDB', 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore('kv'); };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+async function idbGet(k){
+  try{
+    const db = await openKvDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction('kv','readonly');
+      const r = tx.objectStore('kv').get(k);
+      r.onsuccess = ()=>resolve(r.result || null);
+      r.onerror = ()=>reject(r.error);
+    });
+  }catch(e){ return null; }
+}
+async function idbSet(k, v){
+  try{
+    const db = await openKvDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction('kv','readwrite');
+      tx.objectStore('kv').put(v, k);
+      tx.oncomplete = ()=>resolve();
+      tx.onerror = ()=>reject(tx.error);
+    });
+  }catch(e){ /* ignore */ }
+}
+
+function fileSupported(){ return 'showSaveFilePicker' in window; }
+
+async function initFileHandle(){
+  const btn = document.getElementById('fileConnectBtn');
+  const note = document.getElementById('fileStatusNote');
+  if(!fileSupported()){
+    if(btn){ btn.textContent = '🔗 File autosave (unsupported here)'; btn.disabled = true; btn.style.opacity = 0.5; }
+    return;
+  }
+  const handle = await idbGet('fileHandle');
+  if(!handle){ return; }
+  try{
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if(perm === 'granted'){
+      fileHandle = handle;
+      if(btn) btn.textContent = '🔗 Autosaving to ' + handle.name;
+      if(note) note.textContent = `Also autosaving straight to "${handle.name}" on your computer.`;
+      writeToFile();
+    } else {
+      pendingHandle = handle;
+      if(btn){ btn.textContent = '🔗 Resume file autosave (' + handle.name + ')'; btn.onclick = resumeFileHandle; }
+    }
+  }catch(e){ /* handle no longer valid, ignore */ }
+}
+
+async function connectFile(){
+  if(!fileSupported()){
+    alert("This browser can't save directly to a file on disk (that needs Chrome or Edge on a computer). Your progress still autosaves in this browser, and you can use \"Save backup file\" any time.");
+    return;
+  }
+  try{
+    const suggested = (state.className ? state.className.replace(/[^a-z0-9]+/gi,'-') : 'homework') + '-tracker.html';
+    const handle = await window.showSaveFilePicker({ suggestedName: suggested, types: [{ description: 'HTML file', accept: { 'text/html': ['.html'] } }] });
+    fileHandle = handle;
+    await idbSet('fileHandle', handle);
+    const btn = document.getElementById('fileConnectBtn');
+    if(btn){ btn.textContent = '🔗 Autosaving to ' + handle.name; btn.onclick = connectFile; }
+    const note = document.getElementById('fileStatusNote');
+    if(note) note.textContent = `Also autosaving straight to "${handle.name}" on your computer.`;
+    await writeToFile();
+  }catch(e){ if(e.name !== 'AbortError') console.error(e); }
+}
+
+async function resumeFileHandle(){
+  if(!pendingHandle) return;
+  try{
+    const perm = await pendingHandle.requestPermission({ mode: 'readwrite' });
+    if(perm === 'granted'){
+      fileHandle = pendingHandle;
+      pendingHandle = null;
+      const btn = document.getElementById('fileConnectBtn');
+      if(btn){ btn.textContent = '🔗 Autosaving to ' + fileHandle.name; btn.onclick = connectFile; }
+      const note = document.getElementById('fileStatusNote');
+      if(note) note.textContent = `Also autosaving straight to "${fileHandle.name}" on your computer.`;
+      await writeToFile();
+    }
+  }catch(e){ alert("Couldn't get permission to write to that file. Click Connect to pick a file again."); }
+}
+
+async function writeToFile(){
+  if(!fileHandle) return;
+  try{
+    document.getElementById('stateData').textContent = JSON.stringify(state);
+    const html = document.documentElement.outerHTML;
+    const writable = await fileHandle.createWritable();
+    await writable.write(html);
+    await writable.close();
+  }catch(e){
+    setSaveStatus(false, 'Could not write to the connected file - click "Connect file for autosave" to reconnect.');
+    fileHandle = null;
+  }
+}
+
+/////////////////////////////
+// DATE HELPER
+/////////////////////////////
+function getDate(){
+  let d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/////////////////////////////
+// SAVE HTML BACKUP (portable, embeds current data)
+/////////////////////////////
+function saveHTMLBackup(){
+  document.getElementById('stateData').textContent = JSON.stringify(state);
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], {type:"text/html"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const namePart = state.className ? state.className.replace(/[^a-z0-9]+/gi,'-') : 'homework';
+  a.download = `${namePart}-backup-${getDate()}.html`;
+  a.click();
+}
+
+/////////////////////////////
+// EXPORT EXCEL (0 = done, 1 = not done)
+/////////////////////////////
+function exportExcel(){
+  const isColAssigned = state.homeworks.map(isAssigned);
+  const headerRow = ['Student', ...state.homeworks.map((hw,i)=> isColAssigned[i] ? hw : hw + ' (pending)'), 'Done', 'Assigned', '% complete'];
+  const rows = [headerRow];
+
+  state.students.forEach(student=>{
+    let doneCount = 0;
+    let assignedCount = 0;
+    const rowVals = state.homeworks.map((hw,i)=>{
+      if(!isColAssigned[i]) return '';
+      assignedCount++;
+      const v = getValue(student, hw);
+      if(v === 0) doneCount++;
+      return v;
+    });
+    const pct = assignedCount ? Math.round((doneCount / assignedCount) * 100) : 0;
+    rows.push([student, ...rowVals, doneCount, assignedCount, pct + '%']);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // styling
+  const teal = "1E4C58", doneBg = "E7F3EA", doneFg = "2F6B45", notdoneBg = "FBEAE7", notdoneFg = "B03A2E";
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for(let R = range.s.r; R <= range.e.r; R++){
+    for(let C = range.s.c; C <= range.e.c; C++){
+      const addr = XLSX.utils.encode_cell({r:R, c:C});
+      const cell = ws[addr];
+      if(!cell) continue;
+      if(R === 0){
+        cell.s = { font:{ bold:true, color:{rgb:"FFFFFF"} }, fill:{ fgColor:{rgb:teal} }, alignment:{ horizontal:"center", vertical:"center", wrapText:true } };
+      } else if(C >= 1 && C <= state.homeworks.length && isColAssigned[C-1]){
+        const isDone = cell.v === 0;
+        cell.s = { fill:{ fgColor:{rgb: isDone ? doneBg : notdoneBg} }, font:{ color:{rgb: isDone ? doneFg : notdoneFg}, bold:true }, alignment:{ horizontal:"center" } };
+      }
+    }
+  }
+  ws['!cols'] = [{wch:18}, ...state.homeworks.map(()=>({wch:14})), {wch:8},{wch:8},{wch:11}];
+  ws['!freeze'] = { xSplit: 1, ySplit: 1 };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, (state.className || 'Homework').substring(0,31));
+  const namePart = state.className ? state.className.replace(/[^a-z0-9]+/gi,'-') : 'homework';
+  XLSX.writeFile(wb, `${namePart}-${getDate()}.xlsx`);
+}
+
+window.addEventListener('load', init);
+</script>
+
+</body>
+</html>
